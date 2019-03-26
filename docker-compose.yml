@@ -1,0 +1,59 @@
+version: '3.1'
+
+networks:
+  lan:
+
+services:
+  php:
+    build:
+      ./php
+    container_name: ${COMPOSE_PROJECT_NAME}-php-apache
+    volumes:
+      - ./content:${APACHE_ROOT_DIR} #change owner dicrectory recursive to 230000:230000 (subgid:subuid)
+#    command: chown -R www-data:www-data /var/www/html/
+    ports:
+      - 80:80
+    networks:
+      - lan
+    links:
+      - mysql
+    depends_on:
+      - mysql
+
+  mysql:
+    image: mysql:5.7.10
+    container_name: ${COMPOSE_PROJECT_NAME}-mysql
+    environment:
+      - MYSQL_USER=c0alpkr
+      - MYSQL_DATABASE=c0alpkr
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - ./db:/var/lib/mysql
+      - ./orig/c0alpkr.sql:/docker-entrypoint-initdb.d/c0alpkr.sql # change permissions to 755
+    ports:
+      - 3306:3306
+    networks:
+      - lan
+    restart: always
+    logging:
+      driver: none
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: ${COMPOSE_PROJECT_NAME}-phpmyadmin
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+    links:
+      - mysql:db
+    ports:
+      - 8888:80
+    networks:
+      - lan
+    depends_on:
+      - mysql
+    logging:
+      driver: none
+
+
