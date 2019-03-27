@@ -1,56 +1,71 @@
-version: '3.1'
+version: '3.7'
 
 networks:
-  lan:
+  wp-lan:
+
+volumes:
+  mysql_db:
 
 services:
-  php:
-    build:
-      ./php
-    container_name: ${COMPOSE_PROJECT_NAME}-php-apache
+  nginx:
+    build: 
+      context: .
+      dockerfile: nginx.Dockerfile
+    hostname: ${COMPOSE_PROJECT_NAME}-nginx
+    container_name: ${COMPOSE_PROJECT_NAME}-nginx
     volumes:
-      - ./content:${APACHE_ROOT_DIR} #change owner dicrectory recursive to 230000:230000 (subgid:subuid)
-#    command: chown -R www-data:www-data /var/www/html/
+      - "./wp:${NGINX_ROOT_DIR}"
     ports:
       - 80:80
     networks:
-      - lan
-    links:
-      - mysql
+      - wp-lan
+    depends_on:
+      - php-fpm
+#    logging:
+#      driver: journald
+
+  php-fpm:
+    image: php:7.2-fpm-alpine3.8
+    hostname: ${COMPOSE_PROJECT_NAME}-php-fpm
+    container_name: ${COMPOSE_PROJECT_NAME}-php-fpm
+    volumes:
+      - "./wp:${NGINX_ROOT_DIR}"
+    networks:
+      - wp-lan
+    restart: always
     depends_on:
       - mysql
 
   mysql:
-    image: mysql:5.7.10
+    image: mysql:5.7
+    hostname: ${COMPOSE_PROJECT_NAME}-mysql
     container_name: ${COMPOSE_PROJECT_NAME}-mysql
     environment:
-      - MYSQL_USER=c0alpkr
-      - MYSQL_DATABASE=c0alpkr
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
       - MYSQL_PASSWORD=${MYSQL_PASSWORD}
       - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+#    env_file: .env
     command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     volumes:
-      - ./db:/var/lib/mysql
-      - ./orig/c0alpkr.sql:/docker-entrypoint-initdb.d/c0alpkr.sql # change permissions to 755
-    ports:
-      - 3306:3306
+      - "mysql_db:/var/lib/mysql"
+#      - ./orig/c0alpkr.sql:/docker-entrypoint-initdb.d/wp.sql # change permissions to 755
     networks:
-      - lan
+      - wp-lan
     restart: always
-    logging:
-      driver: none
+#    logging:
+#      driver: none
 
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
+    hostname: ${COMPOSE_PROJECT_NAME}-phpmyadmin
     container_name: ${COMPOSE_PROJECT_NAME}-phpmyadmin
     environment:
       - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
-    links:
-      - mysql:db
     ports:
       - 8888:80
     networks:
-      - lan
+      - wp-lan
     depends_on:
       - mysql
     logging:
