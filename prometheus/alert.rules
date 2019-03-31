@@ -1,0 +1,32 @@
+groups:
+  - name: site_health
+    interval: 5s
+    rules:
+
+    - alert: site_is_down
+      expr: probe_success{instance=~""} == 0
+      for: 5s
+      labels:
+        severity: critical
+      annotations:
+        summary: "{{ $labels.instance }} is down for more than 5 sec"
+        console: Grafana dashboard http://1f.lab.int:3000
+
+    - alert: http_status_code != 200 and != 301
+      expr: probe_http_status_code{instance=~"http://1f.lab.int"} != 200 and probe_http_status_code{instance=~"http://1f.lab.int:8000"} != 301
+      for: 20s
+      labels:
+        severity: critical
+      annotations:
+        summary: "{{ $labels.instance }} http_status_code = {{ $value }}"
+        console: Grafana dashboard http://1f.lab.int:3000
+
+    - alert: high_processing_time
+      expr: sum(probe_http_duration_seconds{phase="processing", instance=~"1f.lab.int"}) by (instance) > 10
+      for: 2m
+      labels:
+        severity: warning
+      annotations:
+        summary: "{{ $labels.instance }} has high latency for more than 2 min (value: {{ humanize $value }})"
+        console: Grafana dashboard http://1f.lab.int:3000
+
