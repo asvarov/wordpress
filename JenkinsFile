@@ -1,0 +1,24 @@
+pipeline {
+    agent any
+    parameters { 
+        string(name: 'ansible_dir', defaultValue: '~/somepath/to/playbooks', description: '')
+        string(name: 'message', defaultValue: '', description: '')
+    }
+    stages {
+        stage('Run ansible deploy script') {
+            steps {
+                sh "cd ${params.ansible_dir} && ansible-playbook deploy_wordpress.yml"
+            }
+        }
+        stage('Do something else') {
+            steps {
+                sh "echo $USER"
+            }
+        }
+    }
+    post {
+        always {
+            emailext body: '$DEFAULT_CONTENT $message', subject: '$DEFAULT_SUBJECT $message', to: '$DEFAULT_RECIPIENT'
+        }
+    }
+}
